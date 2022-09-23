@@ -1,59 +1,48 @@
 
+import chunk
 import math
+from queue import PriorityQueue
+from turtle import position
 import requests
 from requests.exceptions import Timeout
-from gdrive import Create_Service, download_from_google_drive
 import pandas as pd
+#import tqdm
 
 
-def list_googledrive_files(service):
-
-    folder_id = "1L_HnNULhHSuDabD036H94pGdD-XbKhLy"
-    query = f"parents = '{folder_id}'"
-
-    response = service.files().list(q=query).execute()
-    # print(response)
-    files = response.get('files')
-    nextPageToken = response.get('nextPageToken')
-    # print(nextPageToken)
-
-    while nextPageToken:
-        response = service.files().list(q=query, pageToken=nextPageToken).execute()
-        # print(response.get('files'))
-        files.extend(response.get('files'))
-        nextPageToken = response.get('nextPageToken')
-        # print(nextPageToken)
-
-    df = pd.DataFrame(files)
-    df = df[df["name"].str.contains("Pi")]
-    # .sort_values(by=['name'], ascending=True)
-    return df
+def download_file(url, save_path):
+    file_name = url.split("=")[-1]
+    print(f'baixando arquivo {file_name}')
+    local_filename = f'{save_path}/{file_name}'
+    # NOTE the stream=True parameter below
+    with requests.get(url, stream=True) as r:
+        r.raise_for_status()
+        # with open(local_filename, 'wb') as f:
+        for chunk in r.iter_content(chunk_size=8192):
+            yield (str(chunk))
+            # If you have chunk encoded response uncomment if
+            # and set chunk_size parameter to None.
+            # if chunk:
+            # f.write(chunk)
+    return local_filename
 
 
 def getPi(start):
-    # vai baixar um arquivo com 78gb e ler por partes
-    # cada arquivo tem 200 bilhoes de digitos
-    CLIENT_SECRET_FILE = 'client_secret.json'
-    API_NAME = 'drive'
-    API_VERSION = 'v3'
-    SCOPES = ['https://www.googleapis.com/auth/drive']
+    # vai baixar um arquivo com 43gb e ler por partes
+    # cada arquivo tem 100 bilhoes de digitos
+    start = str(int((start / (100000000000+1))) + 1)
+    if (len(start) < 2):
+        start = '0' + start
 
-    service = Create_Service(CLIENT_SECRET_FILE, API_NAME, API_VERSION, SCOPES)
-
-    start = start % 200000000000
-    files_df = list_googledrive_files(service)
-    # print(files_df)
-    arq_name = f'Pi - Dec - Chudnovsky - {start}.ycd'
-    print(f'baixando o {arq_name}')
-    id = files_df[files_df["name"] == arq_name]["id"].values[0]
+    url = f'https://ia801605.us.archive.org/view_archive.php?archive=/17/items/pi_dec_1t/pi_dec_1t_{start}.zip&file=pi_dec_1t_{start}.txt'
     save_path = "D:\Projetos\Pessoal\DesafioPI"
-    download_from_google_drive(id, arq_name, service, save_path)
+    for chunk in download_file(url, save_path):
+        yield (chunk)
     return
 
 
 def checkPalindrome(num):
     for i in range(int(len(num)/2)):
-        #print(len(num), i)
+        # print(len(num), i)
         if (num[i] != num[len(num) - (i+1)]):
             return False
 
@@ -71,8 +60,11 @@ def isPrime(num):
     return True
 
 
-def findPiNumbers(verification_length, start):
-    #start = 0
+def findPiNumbers(verification_length, start, chunk_start):
+    # segundo parametro é o inicio da analise, caso tenha sido interrompida em algum momento e queira continuar
+    # o terceito é o chunk que parou, None se não quiser dizer p ele começar de um ponto especifico
+
+    # start = 0
     '''length = 1000
     i = 0
     break_loop = False
@@ -82,7 +74,7 @@ def findPiNumbers(verification_length, start):
         # print(pi)
         for j in range(0, len(pi) - verification_length + 1):
             ev_pi = pi[j:j+verification_length]
-            #print(f'{start+j}: ev_pi: {ev_pi}')
+            # print(f'{start+j}: ev_pi: {ev_pi}')
             if (checkPalindrome(str(ev_pi))):
 
                 print(f'Palindromo encontrado em: ', start + j)
@@ -96,9 +88,55 @@ def findPiNumbers(verification_length, start):
 
         start += length - (verification_length-1)
         i += 1'''
-    getPi(start)
+    start = start - verification_length
+    if (start < 0):
+        start = 0
+    first_chunk = True
+    try:
+        while (1):
+            prev_chunk = ""
+            chunk_count = 0
+            if (first_chunk):
+                print(f'Indo até o chunck {chunk_start}')
+                while (chunk_count < chunk_start - 1):
+                    getPi(start)
+                    chunk_count += 1
+
+            first_chunk = False
+            position = start
+            print(f'Analise de pi {start} ate {start+100000000000}')
+            for chunk in getPi(start):
+                chunk = chunk.replace('.', '').replace(
+                    '\n', '').replace('b', '').replace("'", '')
+
+                if (chunk_count == 0):
+                    print(chunk[0:20])
+
+                chunk = prev_chunk[len(prev_chunk) -
+                                   ((verification_length-1)):-1] + chunk
+                position = position + len(prev_chunk)
+                for j in range(0, len(chunk) - verification_length + 1):
+                    ev_pi = chunk[j:j+(verification_length)]
+                    # print(f'{start+j}: ev_pi: {ev_pi}')
+                    if (checkPalindrome(str(ev_pi))):
+                        print(
+                            f'Palindromo {ev_pi} encontrado - Analise de pi em {position+j} | tamanho do chunk {chunk_count}: {len(chunk)}')
+                        if (isPrime(int(ev_pi))):
+                            print(
+                                f'Palindromo {ev_pi} e primo na posicao {position+j}')
+                            return
+                chunk_count += 1
+                prev_chunk = chunk
+            print(f'nada encontrado entre {start} e {position}')
+            start += 100000000000
+    except KeyboardInterrupt:
+        print(
+            f'Analise de pi {start} ate {position} | tamanho do chunk {chunk_count}: {len(chunk)} interrompida pelo usuário')
+
     return
 
 
+# 43 372 464
 if __name__ == "__main__":
-    findPiNumbers(21, 0)
+
+    findPiNumbers(21, 100907050064, 56893)
