@@ -2,22 +2,12 @@
 import math
 import requests
 from requests.exceptions import Timeout
-from gdrive import Create_Service
+from gdrive import Create_Service, download_from_google_drive
 import pandas as pd
 
 
-def download_from_google_drive(id, destination):
+def list_googledrive_files(service):
 
-    return
-
-
-def list_googledrive_files():
-    CLIENT_SECRET_FILE = 'client_secret.json'
-    API_NAME = 'drive'
-    API_VERSION = 'v3'
-    SCOPES = ['https://www.googleapis.com/auth/drive']
-
-    service = Create_Service(CLIENT_SECRET_FILE, API_NAME, API_VERSION, SCOPES)
     folder_id = "1L_HnNULhHSuDabD036H94pGdD-XbKhLy"
     query = f"parents = '{folder_id}'"
 
@@ -38,16 +28,26 @@ def list_googledrive_files():
     df = df[df["name"].str.contains("Pi")]
     # .sort_values(by=['name'], ascending=True)
     return df
-    # vai baixar um arquivo com 78gb e ler por partes
-    # cada arquivo tem 200 bilhoes de digitos
 
 
 def getPi(start):
+    # vai baixar um arquivo com 78gb e ler por partes
+    # cada arquivo tem 200 bilhoes de digitos
+    CLIENT_SECRET_FILE = 'client_secret.json'
+    API_NAME = 'drive'
+    API_VERSION = 'v3'
+    SCOPES = ['https://www.googleapis.com/auth/drive']
+
+    service = Create_Service(CLIENT_SECRET_FILE, API_NAME, API_VERSION, SCOPES)
+
     start = start % 200000000000
-    files_df = list_googledrive_files()
-    print(files_df)
-    arq_name = f'arquivo Pi - Dec - Chudnovsky - {start}.ycd'
+    files_df = list_googledrive_files(service)
+    # print(files_df)
+    arq_name = f'Pi - Dec - Chudnovsky - {start}.ycd'
     print(f'baixando o {arq_name}')
+    id = files_df[files_df["name"] == arq_name]["id"].values[0]
+    save_path = "D:\Projetos\Pessoal\DesafioPI"
+    download_from_google_drive(id, arq_name, service, save_path)
     return
 
 
@@ -69,8 +69,6 @@ def isPrime(num):
         if (num % i == 0):
             return False
     return True
-
-# travou em um momento então coloquei um parametro para iniciar de 55269060
 
 
 def findPiNumbers(verification_length, start):

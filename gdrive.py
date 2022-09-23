@@ -7,6 +7,7 @@ from google_auth_oauthlib.flow import Flow, InstalledAppFlow
 import os
 import pickle
 import pandas as pd
+import io
 
 
 def Create_Service(client_secret_file, api_name, api_version, *scopes):
@@ -45,3 +46,24 @@ def Create_Service(client_secret_file, api_name, api_version, *scopes):
         print('Unable to connect.')
         print(e)
         return None
+
+
+def download_from_google_drive(id, file_name, service, save_path):
+    request = service.files().get_media(fileId=id)
+
+    fh = io.BytesIO()
+    downloader = MediaIoBaseDownload(fd=fh, request=request)
+
+    done = False
+    while not done:
+        # print(downloader)
+        status, done = downloader.next_chunk()
+        print(f'Download {(status.progress() * 100)}')
+        fh.seek(0)
+        with open(f'{save_path}/{file_name}', 'wb') as f:
+            f.write(fh.read())
+            f.close()
+    fh.seek(0)
+    with open(f'{save_path}/{file_name}', 'wb') as f:
+        f.write(fh.read())
+        f.close()
