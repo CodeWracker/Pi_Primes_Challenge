@@ -104,7 +104,8 @@ def findPiNumbers(verification_length, start, chunk_start):
 
             first_chunk = False
             position = start
-            print(f'Analise de pi {start} ate {start+100000000000}')
+            print(
+                f'Analise de pi {start} ate {int((start / (100000000000+1)))*100000000000 + 100000000000}')
             for chunk in getPi(start):
                 chunk = chunk.replace('.', '').replace(
                     '\n', '').replace('b', '').replace("'", '')
@@ -114,7 +115,7 @@ def findPiNumbers(verification_length, start, chunk_start):
 
                 chunk = prev_chunk[len(prev_chunk) -
                                    ((verification_length-1)):-1] + chunk
-                position = position + len(prev_chunk)
+                position = position + len(prev_chunk) - (verification_length-1)
                 for j in range(0, len(chunk) - verification_length + 1):
                     ev_pi = chunk[j:j+(verification_length)]
                     # print(f'{start+j}: ev_pi: {ev_pi}')
@@ -139,4 +140,5 @@ def findPiNumbers(verification_length, start, chunk_start):
 # 43 372 464
 if __name__ == "__main__":
 
-    findPiNumbers(21, 100907050064, 56893)
+    findPiNumbers(21, 0, 0)
+    #findPiNumbers(9, 0, 0)
