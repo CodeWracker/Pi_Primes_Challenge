@@ -1,22 +1,54 @@
 
 import math
-
 import requests
-
 from requests.exceptions import Timeout
+from gdrive import Create_Service
+import pandas as pd
 
 
-def getPi(start, length):
-    req = {}
-    try:
-        req = requests.get(
-            f'https://api.pi.delivery/v1/pi?start={start}&numberOfDigits={length}')
-    except:
-        print("Erro, tentando de novo")
-        req = getPi(start, length)
-        return req
+def download_from_google_drive(id, destination):
 
-    return ((req.json()['content']))
+    return
+
+
+def list_googledrive_files():
+    CLIENT_SECRET_FILE = 'client_secret.json'
+    API_NAME = 'drive'
+    API_VERSION = 'v3'
+    SCOPES = ['https://www.googleapis.com/auth/drive']
+
+    service = Create_Service(CLIENT_SECRET_FILE, API_NAME, API_VERSION, SCOPES)
+    folder_id = "1L_HnNULhHSuDabD036H94pGdD-XbKhLy"
+    query = f"parents = '{folder_id}'"
+
+    response = service.files().list(q=query).execute()
+    # print(response)
+    files = response.get('files')
+    nextPageToken = response.get('nextPageToken')
+    # print(nextPageToken)
+
+    while nextPageToken:
+        response = service.files().list(q=query, pageToken=nextPageToken).execute()
+        # print(response.get('files'))
+        files.extend(response.get('files'))
+        nextPageToken = response.get('nextPageToken')
+        # print(nextPageToken)
+
+    df = pd.DataFrame(files)
+    df = df[df["name"].str.contains("Pi")]
+    # .sort_values(by=['name'], ascending=True)
+    return df
+    # vai baixar um arquivo com 78gb e ler por partes
+    # cada arquivo tem 200 bilhoes de digitos
+
+
+def getPi(start):
+    start = start % 200000000000
+    files_df = list_googledrive_files()
+    print(files_df)
+    arq_name = f'arquivo Pi - Dec - Chudnovsky - {start}.ycd'
+    print(f'baixando o {arq_name}')
+    return
 
 
 def checkPalindrome(num):
@@ -41,9 +73,9 @@ def isPrime(num):
 # travou em um momento então coloquei um parametro para iniciar de 55269060
 
 
-def generatePiNumbers(verification_length, start):
+def findPiNumbers(verification_length, start):
     #start = 0
-    length = 1000
+    '''length = 1000
     i = 0
     break_loop = False
     while (1):
@@ -65,9 +97,10 @@ def generatePiNumbers(verification_length, start):
             break
 
         start += length - (verification_length-1)
-        i += 1
+        i += 1'''
+    getPi(start)
     return
 
 
 if __name__ == "__main__":
-    generatePiNumbers(21, 55269060)
+    findPiNumbers(21, 0)
